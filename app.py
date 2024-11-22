@@ -5,6 +5,7 @@ from flask import jsonify
 from functools import wraps
 import yfinance as yf
 from werkzeug.security import check_password_hash
+from MySQLdb.cursors import DictCursor
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -400,71 +401,7 @@ def manage_exchanges():
 def manage_exchanges_for_user():
     return render_template('manage_exchanges_for_user.html')
 
-# @app.route('/add_user', methods=['GET', 'POST'])
-# @login_required
-# def add_user():
-#     if session.get('role') != 'admin':
-#         flash("Access restricted to admin only.", "danger")
-#         return redirect(url_for('user_dashboard'))
-    
-#     if request.method == 'POST':
-#         # Retrieve form data
-#         user_id = request.form['user_id']
-#         risk_profile = request.form['risk_profile']
-#         account_details = request.form['account_details']
-#         name = request.form['name']
-#         account_id = request.form.get('account_id', None)
-#         acc_type = request.form.get('acc_type', None)
-#         acc_status = request.form.get('acc_status', None)
-#         opening_date = request.form.get('opening_date', None)
 
-#         # Retrieve multiple email IDs and phone numbers
-#         email_ids = request.form.getlist('email_id')  # Gets all emails submitted
-#         phone_nos = request.form.getlist('phone_no')  # Gets all phones submitted
-
-#         # Insert the user into MySQL
-#         cur = mysql.connection.cursor()
-        
-#         try:
-#             # Insert data into the user table
-#             cur.execute(
-#                 """
-#                 INSERT INTO user (user_id, risk_profile, name, account_id, acc_type, account_details, acc_status, opening_date) 
-#                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-#                 """,
-#                 (user_id, risk_profile, name, account_id, acc_type, account_details, acc_status, opening_date)
-#             )
-
-#             # Insert email IDs if provided
-#             for email in email_ids:
-#                 if email.strip():  # Only insert non-empty emails
-#                     cur.execute(
-#                         "INSERT INTO user_emailid (user_id, email_id) VALUES (%s, %s)",
-#                         (user_id, email)
-#                     )
-
-#             # Insert phone numbers if provided
-#             for phone in phone_nos:
-#                 if phone.strip():  # Only insert non-empty phone numbers
-#                     cur.execute(
-#                         "INSERT INTO user_phno (user_id, phone_no) VALUES (%s, %s)",
-#                         (user_id, phone)
-#                     )
-
-#             # Commit changes
-#             mysql.connection.commit()
-#             flash("User added successfully!", "success")
-#         except Exception as e:
-#             # Rollback in case of error
-#             mysql.connection.rollback()
-#             flash(f"An error occurred: {e}", "danger")
-#         finally:
-#             cur.close()
-
-#         return redirect(url_for('view_users'))
-
-#     # Render the form template if request method is GET
-#     return render_template('add_user.html')
 @app.route('/add_user', methods=['GET', 'POST'])
 @login_required
 def add_user():
@@ -538,39 +475,7 @@ def update_user_details(user_id, name, risk_profile, account_id, acc_type, accou
         cursor.close()  # Close cursor
         connection.close()  
 
-# # Route to edit a user
-# @app.route('/edit_user/<string:user_id>', methods=['GET', 'POST'])
-# def edit_user(user_id):
-#     cursor = mysql.connection.cursor()
 
-#     # Check if the form was submitted to update the user
-#     if request.method == 'POST':
-#         name = request.form['name']
-#         risk_profile = request.form['risk_profile']
-#         acc_type = request.form['acc_type']
-#         acc_details = request.form['acc_details']
-#         acc_status = request.form['acc_status']
-#         opening_date=request.form['opening_date']
-#         email = request.form['email']
-#         phone = request.form['phone']
-
-#         cursor.execute("""
-#             UPDATE user
-#             SET name = %s, risk_profile = %s, acc_type = %s, account_details = %s,
-#                 acc_status = %s,opening_date=%s, email = %s, phone = %s
-#             WHERE user_id = %s
-#         """, (name, risk_profile, acc_type, acc_details, acc_status,opening_date, email, phone, user_id))
-#         mysql.connection.commit()
-#         cursor.close()
-
-#         return redirect(url_for('view_users'))
-
-#     # If it's a GET request, fetch the current user details to show in the form
-#     cursor.execute("SELECT * FROM user WHERE user_id = %s", (user_id,))
-#     user = cursor.fetchone()
-#     cursor.close()
-
-#     return render_template('edit_user.html', user=user)
 
 @app.route('/edit_user/<string:user_id>', methods=['GET', 'POST'])
 def edit_user(user_id):
@@ -652,8 +557,6 @@ def edit_user(user_id):
 
     # Render the template with current data
     return render_template('edit_user.html', user=user, emails=emails, phones=phones)
-
-
 
 
 
@@ -1100,38 +1003,7 @@ def edit_portfolio(portfolio_id):
     # Render the edit portfolio form
     return render_template('edit_portfolio.html', portfolio=portfolio, users=users, stocks=stocks)
 
-#from flask import render_template, url_for
 
-#@app.route('/update_portfolio/<int:portfolio_id>')
-#@login_required
-#def update_portfolio(portfolio_id):
-    #portfolio = Portfolio.query.get_or_404(portfolio_id)
- #   return render_template('update_portfolio.html', portfolio=portfolio)
-from MySQLdb.cursors import DictCursor
-
-'''@app.route('/view_portfolios', methods=['GET', 'POST'])
-@login_required
-def view_portfolios():
-    filter_option = request.args.get('filter', 'all')  # Default to 'all'
-
-    cur = mysql.connection.cursor()
-    
-    # Call stored procedure to get portfolios ordered by stock count
-    cur.callproc('get_portfolios_ordered_by_stocks')
-    portfolios = cur.fetchall()
-
-    # Filter to show only the portfolio with the maximum number of stocks if specified
-    if filter_option == 'max_stocks' and portfolios:
-        
-        # portfolios are sorted by stock_count DESC in the procedure, so the first one has the max count
-        for i in range(len(portfolios)):
-            if portfolios[0]==i:
-                portfolios.append(portfolios[i])
-            else:
-                portfolios=portfolios[[0]]
-    cur.close()
-
-    return render_template('view_portfolios.html', portfolios=portfolios, filter_option=filter_option)'''
 @app.route('/view_portfolios', methods=['GET', 'POST'])
 @login_required
 def view_portfolios():
@@ -1217,48 +1089,6 @@ def update_user_status():
     
     # Trigger to update portfolios will automatically run here due to the trigger in the database
     return redirect(url_for('view_users'))
-
-# @app.route('/view_order_stock', methods=['GET', 'POST'])
-# @login_required
-# def view_order_stock():
-#     # Get `stock_id` and `order_id` from query parameters or form data
-#     stock_id = request.args.get('stock_id') or request.form.get('stock_id')
-#     order_id = request.args.get('order_id') or request.form.get('order_id')
-
-#     # Ensure both `stock_id` and `order_id` are provided
-#     if not stock_id or not order_id:
-#         return "Please provide both stock_id and order_id.", 400
-
-#     # Query the database for order and stock details
-#     cur = mysql.connection.cursor()
-#     try:
-#         # SQL query to join buy_sell, stock, and order_table
-#         cur.execute("""
-#             SELECT 
-#                 ot.order_id, ot.order_type, ot.exchange_id, ot.qty, ot.price, 
-#                 ot.order_status, ot.date_and_time, s.stock_id, s.comp_name, 
-#                 s.sector, s.total_share, s.market_price, s.listing_date
-#             FROM buy_sell bs
-#             JOIN order_table ot ON bs.order_id = ot.order_id
-#             JOIN stock s ON bs.stock_id = s.stock_id
-#             WHERE bs.stock_id = %s AND bs.order_id = %s
-#         """, (stock_id, order_id))
-
-#         # Fetch result
-#         order_details = cur.fetchone()
-
-#         # Handle case where no matching record is found
-#         if not order_details:
-#             return "No matching records found for the provided stock_id and order_id.", 404
-
-#     except Exception as e:
-#         print("Database error:", e)
-#         return "Database error occurred", 500
-#     finally:
-#         cur.close()
-
-#     # Render the result in a template
-#     return render_template('view_order_details.html', order_details=order_details)
 
 
 @app.route('/view_exchanges')
